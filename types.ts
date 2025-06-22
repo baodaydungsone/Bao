@@ -377,3 +377,33 @@ export interface AIRandomGenerationParams {
   userDescription: string;
   numEntities: number;
 }
+
+// Google Auth & Drive Types
+export interface GoogleUserProfile {
+  id: string;
+  email: string;
+  name: string;
+  givenName: string;
+  familyName: string;
+  picture: string;
+}
+
+export interface GoogleTokenResponse {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any; // Allow other properties from Google's response
+  access_token: string;
+  expires_in: number;
+  scope: string;
+  token_type: string;
+  error?: string;
+  error_description?: string;
+  error_uri?: string;
+}
+
+// Extend GAPI types if needed, or use 'any' for simplicity if specific types are too complex
+declare global {
+  // eslint-disable-next-line no-var
+  var gapi: any;
+  // eslint-disable-next-line no-var
+  var google: any;
+}
