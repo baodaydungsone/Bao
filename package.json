@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "AI Roleplay Simulator Game, Nhập Vai A.I Simulator",
   "scripts": {
-    "build": "esbuild index.tsx --bundle --outfile=dist/bundle.js --platform=browser --format=esm --jsx=automatic --loader:.tsx=tsx"
+    "build": "esbuild index.tsx --bundle --outfile=dist/bundle.js --platform=browser --format=esm --jsx=automatic --loader:.tsx=tsx --external:react --external:react-dom/client --external:react/jsx-runtime --external:@google/genai"
   },
   "devDependencies": {
     "esbuild": "^0.21.4"
