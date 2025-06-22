@@ -10,6 +10,14 @@ export const LOCAL_STORAGE_NSFW_KEY = "aiRoleplaySimulatorNSFW";
 export const LOCAL_STORAGE_API_KEY = "aiRoleplaySimulatorApiKey";
 export const LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX = "aiRoleplaySimulatorAutosave_"; // Renamed and updated
 
+// Google Drive Integration Constants
+export const GOOGLE_CLIENT_ID = "953626092817-h3m9jmfj7kpbb9n438vn4blvcit7igpq.apps.googleusercontent.com";
+// Scope for creating files in the user's Drive, visible to the user.
+// AppData folder is an alternative for hidden app-specific data: 'https://www.googleapis.com/auth/drive.appdata'
+export const GOOGLE_DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
+export const GAME_DRIVE_FOLDER_NAME = "AISimulatorSaves";
+export const DRIVE_DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+
 
 export const STORY_PROMPT_CONFIG_BASE = {
   systemInstruction: `Bạn là một AI kể chuyện chuyên nghiệp, am hiểu sâu sắc văn phong và mô-típ của tiểu thuyết mạng Trung Quốc.
