@@ -4,6 +4,7 @@ import { ModalType } from '../types';
 import { APP_TITLE } from '../constants';
 // Button component is now more generic, specific styling for homepage buttons will be here
 import { useSettings } from '../contexts/SettingsContext';
+import GoogleSignInButton from '../components/GoogleSignInButton'; // Import GoogleSignInButton
 
 interface HomePageProps {
   openModal: (modalType: ModalType) => void;
@@ -115,7 +116,12 @@ const HomePage: React.FC<HomePageProps> = ({ openModal }) => {
     <>
       <ParticleBackground />
       <div className="relative flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 dark:from-slate-900 dark:via-background-dark dark:to-slate-800 transition-colors duration-300">
-        <header className="text-center mb-10 sm:mb-12 z-10">
+        
+        <div className="absolute top-4 right-4 z-20">
+          <GoogleSignInButton />
+        </div>
+
+        <header className="text-center mb-10 sm:mb-12 z-10 pt-16 sm:pt-0"> {/* Added padding top for mobile to avoid overlap */}
           <h1 className="text-4xl xs:text-5xl sm:text-6xl lg:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-secondary-dark dark:from-primary-light dark:via-blue-400 dark:to-secondary animate-text-gradient-wave mb-4"
               style={{ WebkitTextStroke: settings.theme === 'dark' ? '0.5px rgba(255,255,255,0.1)' : '1px rgba(0,0,0,0.05)', textShadow: '1px 1px 2px rgba(0,0,0,0.1)' }}>
             {APP_TITLE}
