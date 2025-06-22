@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { InternalToastProvider } from './contexts/ToastContext'; // Changed to InternalToastProvider
+import { GoogleAuthProvider } from './contexts/GoogleAuthContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,7 +16,9 @@ root.render(
   <React.StrictMode>
     <SettingsProvider>
       <InternalToastProvider> {/* Use InternalToastProvider here */}
-        <App />
+        <GoogleAuthProvider>
+          <App />
+        </GoogleAuthProvider>
       </InternalToastProvider>
     </SettingsProvider>
   </React.StrictMode>
