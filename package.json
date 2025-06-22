@@ -1,22 +1,11 @@
 {
-  "name": "bản-cuối-cùng",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "nhap-vai-ai-simulator",
+  "version": "1.0.0",
+  "description": "AI Roleplay Simulator Game, Nhập Vai A.I Simulator",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-dom/client": "18.2.0",
-    "@google/genai": "1.4.0"
+    "build": "esbuild index.tsx --bundle --outfile=dist/bundle.js --platform=browser --format=esm --jsx=automatic --loader:.tsx=tsx"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "typescript": "~5.7.2",
-    "vite": "^6.2.0"
+    "esbuild": "^0.21.4"
   }
 }
