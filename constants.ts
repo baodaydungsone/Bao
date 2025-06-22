@@ -1,3 +1,4 @@
+
 export const APP_TITLE = "Nhập Vai A.I Simulator";
 export const DEFAULT_API_KEY_PLACEHOLDER = "process.env.API_KEY will be used";
 export const GEMINI_API_KEY_URL = "https://aistudio.google.com/app/apikey";
@@ -8,10 +9,6 @@ export const LOCAL_STORAGE_SETTINGS_KEY = "aiRoleplaySimulatorSettings";
 export const LOCAL_STORAGE_NSFW_KEY = "aiRoleplaySimulatorNSFW";
 export const LOCAL_STORAGE_API_KEY = "aiRoleplaySimulatorApiKey";
 export const LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX = "aiRoleplaySimulatorAutosave_"; // Renamed and updated
-
-export const GOOGLE_CLIENT_ID = "953626092817-h3m9jmfj7kpbb9n438vn4blvcit7igpq.apps.googleusercontent.com";
-export const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
-export const DRIVE_APP_FOLDER_NAME = "AI Nhap Vai Simulator Saves";
 
 
 export const STORY_PROMPT_CONFIG_BASE = {

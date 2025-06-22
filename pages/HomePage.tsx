@@ -1,9 +1,9 @@
+
 import React, { useEffect, useRef } from 'react';
 import { ModalType } from '../types';
 import { APP_TITLE } from '../constants';
 // Button component is now more generic, specific styling for homepage buttons will be here
 import { useSettings } from '../contexts/SettingsContext';
-import GoogleAuthButton from '../components/GoogleAuthButton'; // Import GoogleAuthButton
 
 interface HomePageProps {
   openModal: (modalType: ModalType) => void;
@@ -114,9 +114,6 @@ const HomePage: React.FC<HomePageProps> = ({ openModal }) => {
   return (
     <>
       <ParticleBackground />
-      <div className="fixed top-4 right-4 z-20">
-          <GoogleAuthButton />
-      </div>
       <div className="relative flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 dark:from-slate-900 dark:via-background-dark dark:to-slate-800 transition-colors duration-300">
         <header className="text-center mb-10 sm:mb-12 z-10">
           <h1 className="text-4xl xs:text-5xl sm:text-6xl lg:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-secondary-dark dark:from-primary-light dark:via-blue-400 dark:to-secondary animate-text-gradient-wave mb-4"

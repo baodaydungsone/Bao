@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ModalType, GameState, StorySetupData, Settings, NSFWPreferences, Entity, CharacterStats, InventoryItem, Achievement, Skill, NPCProfile, Objective, EquipmentSlot, AutosavedGameInfo, ActiveSidebarTab } from './types';
 import { APP_TITLE, LOCAL_STORAGE_API_KEY, LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX } from './constants';
@@ -17,16 +18,13 @@ import EncyclopediaModal from './components/modals/EncyclopediaModal';
 import ToastContainer from './components/ToastContainer';
 import DeathConfirmationModal from './components/modals/DeathConfirmationModal';
 import SaveGameModal from './components/modals/SaveGameModal'; 
-import { useGoogleAuth } from './contexts/GoogleAuthContext'; // Import Google Auth
 
 const App: React.FC = () => {
   const { settings, nsfwSettings, userApiKey } = useSettings();
   const { addToast } = usePublicToast();
-  const { googleUser, isDriveApiReady, driveAppFolderId, isLoadingAuth } = useGoogleAuth(); // Use Google Auth
   const [activeModal, setActiveModal] = useState<ModalType>(ModalType.None);
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [isAppLoading, setIsAppLoading] = useState<boolean>(true); // Renamed from isLoading to avoid conflict
-
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // slotIdentifier here is the user-chosen name, normalization happens inside
   const saveGameStateToLocalStorage = useCallback((currentGameState: GameState | null, slotIdentifier: string) => {
@@ -83,14 +81,11 @@ const App: React.FC = () => {
   }, [settings.theme, settings.fontSize]);
 
   useEffect(() => {
-    // Only set app loading to false when Google Auth is no longer loading
-    if (!isLoadingAuth) {
-        const timer = setTimeout(() => {
-            setIsAppLoading(false);
-        }, 300); // Small delay for smoother transition
-        return () => clearTimeout(timer);
-    }
-  }, [isLoadingAuth]);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500); 
+    return () => clearTimeout(timer);
+  }, []);
 
 
   const handleStartNewStory = useCallback((setupData: StorySetupData) => {
@@ -275,7 +270,7 @@ const App: React.FC = () => {
     }
   }, [addToast]);
 
-  if (isAppLoading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-xl text-primary dark:text-primary-light bg-background-light dark:bg-background-dark p-4">
         <svg className="animate-spin h-12 w-12 text-primary dark:text-primary-light mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

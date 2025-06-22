@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GameState, StoryMessage, PlayerChoice, ModalType, NSFWPreferences, Entity, EntityType, CharacterStats, InventoryItem, CharacterAttribute, ItemEffect, ToastType, StatChange, Achievement, Skill, SkillChange, ActiveSidebarTab, NPCProfile, RelationshipStatus, Objective, EquipmentSlot, StatBonus, StorySetupData, SkillProficiency, AutosavedGameInfo, Settings } from '../types';
 import Button from '../components/Button';
@@ -8,7 +9,6 @@ import { generateInitialStory, generateNextStorySegment, NextStorySegmentResult 
 import { LOCAL_STORAGE_API_KEY } from '../constants';
 import Modal from '../components/Modal'; 
 import MobileActionSheet from '../components/MobileActionSheet'; // Import MobileActionSheet
-import GoogleAuthButton from '../components/GoogleAuthButton'; // Import GoogleAuthButton
 
 interface GamePageProps {
   gameState: GameState;
@@ -1778,9 +1778,6 @@ export const GamePage: React.FC<GamePageProps> = ({
   if (!gameState.isInitialStoryGenerated && isMobile) {
      dropdownHeaderButtons.push({ id: 'reroll', icon: 'fas fa-dice-d6', title: 'Tạo Lại Mở Đầu', action: handleRerollInitialStory, disabled: isLoadingAI || gameState.history.length > 0, mobileHidden: false});
   }
-   if (isMobile) {
-    dropdownHeaderButtons.push({ id: 'google_auth_mobile', icon: 'fab fa-google', title: 'Tài Khoản Google', isComponent: true, component: <GoogleAuthButton variant="dropdownItem"/>, mobileHidden: false });
-   }
 
 
   return (
@@ -1800,7 +1797,6 @@ export const GamePage: React.FC<GamePageProps> = ({
             )}
           </div>
           <div className="flex-shrink-0 flex items-center space-x-1 sm:space-x-1.5">
-            {!isMobile && <GoogleAuthButton />} {/* Google Auth Button for Desktop */}
             <Button size="xs" variant="ghost" onClick={() => openModal(ModalType.SaveGame)} title="Lưu Game"><i className="fas fa-save"></i><span className="hidden sm:inline ml-1.5">Lưu</span></Button>
             
             {!isMobile && !gameState.isInitialStoryGenerated && (
@@ -1853,12 +1849,8 @@ export const GamePage: React.FC<GamePageProps> = ({
                         <i className="fas fa-ellipsis-v"></i>
                     </Button>
                     {isHeaderDropdownOpen && (
-                        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-700 rounded-md shadow-lg py-1 z-50 border border-border-light dark:border-border-dark">
-                            {dropdownHeaderButtons.map(btn => {
-                              if ((btn as any).isComponent) {
-                                return <div key={btn.id as string}>{(btn as any).component}</div>;
-                              }
-                              return (
+                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-700 rounded-md shadow-lg py-1 z-50 border border-border-light dark:border-border-dark">
+                            {dropdownHeaderButtons.map(btn => (
                                 <button
                                     key={btn.title}
                                     onClick={() => { btn.action ? btn.action() : openModal(btn.id as ModalType); setIsHeaderDropdownOpen(false); }}
@@ -1868,7 +1860,7 @@ export const GamePage: React.FC<GamePageProps> = ({
                                 >
                                     <i className={`${btn.icon} mr-2.5 w-4 text-center`}></i>{btn.title}
                                 </button>
-                            )})}
+                            ))}
                         </div>
                     )}
                 </div>
@@ -1905,4 +1897,150 @@ export const GamePage: React.FC<GamePageProps> = ({
                 case 'system':
                   msgStyle = 'bg-amber-50 dark:bg-amber-900/60 text-amber-700 dark:text-amber-200 border border-amber-300 dark:border-amber-600/70 text-xs italic shadow-sm';
                   align = 'self-center w-full sm:w-auto max-w-xl text-center';
-                  icon = <i className="fas fa-info-circle mr-1.5 sm:mr-2 text-amber-5
+                  icon = <i className="fas fa-info-circle mr-1.5 sm:mr-2 text-amber-500 dark:text-amber-400"></i>;
+                  break;
+                case 'event':
+                  msgStyle = 'bg-gradient-to-r from-purple-500 to-pink-500 text-white dark:from-purple-600 dark:to-pink-600 dark:text-white p-3 sm:p-3.5 shadow-md border-purple-300 dark:border-pink-400';
+                  icon = <i className="fas fa-star-of-life mr-2 sm:mr-2.5 opacity-90"></i>;
+                  break;
+                case 'author':
+                   msgStyle = 'bg-red-100 dark:bg-red-800/70 text-red-700 dark:text-red-200 border border-red-300 dark:border-red-600/70 shadow-sm';
+                   icon = <i className="fas fa-crown mr-2 sm:mr-2.5 text-red-500 dark:text-red-400 opacity-90"></i>;
+                   break;
+                case 'loading':
+                  return (
+                    <div key={msg.id} className="p-3 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse text-center">
+                      <i className="fas fa-spinner fa-spin mr-2"></i>{msg.content}
+                    </div>
+                  );
+              }
+              return (
+                <div key={msg.id} id={msg.id} className={`p-2.5 sm:p-3 rounded-xl text-sm leading-relaxed ${msgStyle} ${align} transition-opacity duration-500 animate-fadeInUp`}>
+                  <div className="flex items-start">
+                    {icon}
+                    <div className="flex-grow min-w-0"> 
+                        {msg.characterName && <strong className="block mb-0.5">{msg.characterName}:</strong>}
+                        <div className="whitespace-pre-wrap break-words">{parseAndRenderMessageContent(msg.content)}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {isLoadingAI && !gameState.isInitialStoryGenerated && (
+            <div className="sticky bottom-0 left-0 right-0 p-3 bg-slate-200/80 dark:bg-slate-700/80 backdrop-blur-sm rounded-b-xl text-center text-sm font-semibold">
+              <i className="fas fa-brain fa-spin mr-2"></i>AI đang khởi tạo thế giới... Xin chờ trong giây lát...
+            </div>
+          )}
+        </div>
+
+        {/* Action Input Area (Right on Desktop) */}
+        {!isMobile && (
+          <div className="flex-shrink-0 w-full sm:w-2/5 xl:w-1/3 p-3 sm:p-4 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-lg flex flex-col overflow-y-auto custom-scrollbar">
+            <ActionPanelContent
+              choices={gameState.currentChoices}
+              onChooseAction={handleAction}
+              isLoadingAI={isLoadingAI}
+              isRoleplayModeActive={gameState.isRoleplayModeActive}
+              isAuthorInterventionModeActive={gameState.isAuthorInterventionModeActive}
+              toggleRoleplayMode={toggleRoleplayMode}
+              toggleAuthorInterventionMode={toggleAuthorInterventionMode}
+              isMobile={false}
+            />
+            {isLoadingAI && gameState.isInitialStoryGenerated && (
+              <div className="flex-shrink-0 p-2.5 bg-slate-200/80 dark:bg-slate-700/80 backdrop-blur-sm text-center text-xs font-semibold border-t border-border-light dark:border-border-dark mt-auto">
+                  <i className="fas fa-spinner fa-spin mr-2"></i>AI đang xử lý...
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+      
+      {/* Mobile Bottom Navigation Bar */}
+      {isMobile && (
+        <footer className={`fixed bottom-0 left-0 right-0 flex-shrink-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-top-strong p-1 border-t border-border-light dark:border-border-dark z-30`}>
+          <div className="mx-auto flex justify-around items-center flex-nowrap overflow-x-auto no-scrollbar">
+              {allPanelButtons.map(panel => (
+              <Button
+                key={panel.id}
+                onClick={() => setActivePanelModal(panel.id)}
+                variant={activePanelModal === panel.id ? 'primary' : 'ghost'}
+                size="sm"
+                className={`!px-1.5 !py-2 !text-xs whitespace-nowrap flex flex-col items-center h-14 min-w-[55px] flex-1 relative`}
+                title={panel.label}
+              >
+                <i className={`${panel.icon} text-lg mb-0.5`}></i>
+                <span className={`text-[10px]`}>{panel.label}</span>
+              </Button>
+            ))}
+          </div>
+        </footer>
+      )}
+
+        {/* Modal for displaying panels (Stats, Inv, etc.) - Also for Desktop via Panel Dropdown */}
+        {activePanelModal && activePanelModal !== 'actions' && (
+        <Modal
+            isOpen={!!activePanelModal}
+            onClose={() => setActivePanelModal(null)}
+            title={allPanelButtons.find(p => p.id === activePanelModal)?.label || "Bảng Thông Tin"}
+            size={isMobile ? "full" : "xl"}
+        >
+            <div className={`${isMobile ? 'pb-16' : ''}`}> {/* Add padding-bottom on mobile to account for fixed bottom nav */}
+              {allPanelButtons.find(p => p.id === activePanelModal)?.component}
+            </div>
+        </Modal>
+        )}
+        
+        {/* Mobile Action Sheet for 'actions' tab */}
+        {isMobile && (
+          <MobileActionSheet
+            isOpen={activePanelModal === 'actions'}
+            onClose={() => setActivePanelModal(null)}
+            title="Hành Động Của Bạn"
+          >
+            <ActionPanelContent
+              choices={gameState.currentChoices}
+              onChooseAction={(action) => { 
+                handleAction(action); 
+                setActivePanelModal(null); // Close sheet after action
+              }}
+              isLoadingAI={isLoadingAI}
+              isRoleplayModeActive={gameState.isRoleplayModeActive}
+              isAuthorInterventionModeActive={gameState.isAuthorInterventionModeActive}
+              toggleRoleplayMode={toggleRoleplayMode}
+              toggleAuthorInterventionMode={toggleAuthorInterventionMode}
+              isMobile={true}
+            />
+             {isLoadingAI && gameState.isInitialStoryGenerated && (
+              <div className="flex-shrink-0 p-2 bg-slate-200/80 dark:bg-slate-700/80 text-center text-xs font-semibold mt-2 rounded">
+                  <i className="fas fa-spinner fa-spin mr-2"></i>AI đang xử lý...
+              </div>
+            )}
+          </MobileActionSheet>
+        )}
+
+        {/* Tooltip display */}
+        {tooltip && (
+            <div
+                ref={tooltipElementRef}
+                id="keyword-tooltip"
+                role="tooltip"
+                className="fixed z-[250] p-2 text-xs text-white bg-slate-800/90 dark:bg-slate-900/95 rounded-md shadow-xl max-w-xs transition-opacity duration-100 backdrop-blur-sm animate-tooltipFadeIn"
+                style={{
+                left: `${tooltip.x}px`,
+                top: `${tooltip.y}px`,
+                transform: `translate(-50%, -100%) translateY(-8px)`, 
+                opacity: 1,
+                }}
+                onMouseEnter={() => { if (hideTooltipTimeoutRef.current) clearTimeout(hideTooltipTimeoutRef.current);}}
+                onMouseLeave={handleKeywordMouseLeave} 
+            >
+                {tooltip.content}
+                <div 
+                    className="absolute left-1/2 bottom-0 w-2 h-2 bg-slate-800/90 dark:bg-slate-900/95 transform -translate-x-1/2 translate-y-1/2 rotate-45"
+                ></div>
+            </div>
+        )}
+    </div>
+  );
+};

@@ -1,3 +1,4 @@
+
 export enum Theme {
   Light = "light",
   Dark = "dark",
@@ -375,11 +376,4 @@ export interface AIRandomGenerationParams {
   userTheme: string;
   userDescription: string;
   numEntities: number;
-}
-
-export interface GoogleUser {
-  name?: string;
-  email?: string;
-  picture?: string;
-  id?: string;
 }
