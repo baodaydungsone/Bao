@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
@@ -5,6 +6,7 @@ import Input from '../Input';
 import { GameState, AutosavedGameInfo } from '../../types';
 import { LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX } from '../../constants';
 import { usePublicToast } from '../../contexts/ToastContext';
+import { useGoogleAuth } from '../../contexts/GoogleAuthContext'; // Import useGoogleAuth
 
 interface SaveGameModalProps {
   isOpen: boolean;
@@ -55,6 +57,7 @@ const SaveGameModal: React.FC<SaveGameModalProps> = ({
   onSaveToLocalStorageSlot
 }) => {
   const { addToast } = usePublicToast();
+  const { isSignedIn, signIn, saveGameToDrive, isLoading: isGoogleAuthLoading, isGapiInitialized } = useGoogleAuth(); // Use GoogleAuth context
   const [slotName, setSlotName] = useState<string>('');
   const [existingSlots, setExistingSlots] = useState<ExistingSlotInfo[]>([]);
 
@@ -110,11 +113,25 @@ const SaveGameModal: React.FC<SaveGameModalProps> = ({
   };
   
   const handleSelectSlotForOverwrite = (slotInfo: ExistingSlotInfo) => {
-    // Use the display name for the input field, as it's more user-friendly.
-    // The actual saving logic will normalize it.
     setSlotName(slotInfo.displayName);
     addToast({message: `Tên slot "${slotInfo.displayName}" đã được điền. Nhấn "Lưu Vào Slot Này" để ghi đè.`, type: 'info', icon: 'fas fa-edit'});
   };
+
+  const handleSaveToGoogleDrive = async () => {
+    if (!gameState) {
+      addToast({ message: "Không có dữ liệu game để lưu.", type: 'error' });
+      return;
+    }
+    if (!isSignedIn) {
+      addToast({ message: "Vui lòng đăng nhập Google để sử dụng tính năng này.", type: 'warning' });
+      await signIn(); // Prompt to sign in if not already
+      return; 
+    }
+    const fileNameToSave = gameState.setup.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'aisim_save';
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    await saveGameToDrive(gameState, `${fileNameToSave}_${timestamp}`);
+  };
+
 
   if (!gameState) return null;
 
@@ -137,6 +154,40 @@ const SaveGameModal: React.FC<SaveGameModalProps> = ({
             Tải File JSON Xuống
           </Button>
         </div>
+        
+        {/* Google Drive Save Section */}
+        <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/60 border-green-200 dark:border-green-700">
+          <h3 className="text-md font-semibold text-text-light dark:text-text-dark mb-2">
+            <i className="fab fa-google-drive mr-2 text-green-500 dark:text-green-400"></i>Lưu Vào Google Drive
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+            Lưu game an toàn vào tài khoản Google Drive của bạn. Cần đăng nhập Google.
+          </p>
+          {isSignedIn ? (
+            <Button 
+              onClick={handleSaveToGoogleDrive}
+              variant="success" // A green button
+              className="w-full sm:w-auto"
+              leftIcon={<i className="fas fa-cloud-upload-alt"></i>}
+              isLoading={isGoogleAuthLoading && !isGapiInitialized} // Show loading if GAuth is busy (e.g., during save)
+              disabled={isGoogleAuthLoading && !isGapiInitialized}
+            >
+              Lưu vào Google Drive
+            </Button>
+          ) : (
+            <Button 
+              onClick={signIn} // Or handleSaveToGoogleDrive which will trigger signIn
+              variant="outline"
+              className="w-full sm:w-auto border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white dark:border-blue-400 dark:text-blue-300 dark:hover:bg-blue-400 dark:hover:text-card-dark"
+              leftIcon={<i className="fab fa-google"></i>}
+              isLoading={isGoogleAuthLoading && !isGapiInitialized}
+              disabled={isGoogleAuthLoading && !isGapiInitialized}
+            >
+              Đăng Nhập Google để Lưu vào Drive
+            </Button>
+          )}
+        </div>
+
 
         <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/60 border-blue-200 dark:border-blue-700">
           <h3 className="text-md font-semibold text-text-light dark:text-text-dark mb-2">
