@@ -203,4 +203,3 @@ export const uploadGameToDrive = async (gameState: GameState, fileName: string):
 // Helper to check if gapi is loaded (for components)
 export const isGapiLoaded = () => !!gapiInstance && !!gapiInstance.client;
 export const isGisLoaded = () => !!googleIdentityClient;
-
