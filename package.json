@@ -1,0 +1,32 @@
+{
+  "name": "ai-nhap-vai-simulator",
+  "version": "1.0.0",
+  "description": "AI Nhập Vai Simulator sử dụng Gemini API, React và TypeScript.",
+  "type": "module",
+  "scripts": {
+    "dev": "esbuild index.tsx --bundle --outfile=dist/bundle.js --format=esm --platform=browser --sourcemap --servedir=.",
+    "build": "esbuild index.tsx --bundle --outfile=dist/bundle.js --format=esm --platform=browser --minify",
+    "check-types": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "gemini",
+    "react",
+    "typescript",
+    "nhap-vai",
+    "roleplay"
+  ],
+  "author": "AI Roleplay User & Developer",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/react": "^18.3.2",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@google/genai": "^1.6.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
