@@ -16,8 +16,7 @@ export enum ModalType {
   StorySummary,
   Encyclopedia,
   DeathConfirmation,
-  SaveGame,
-  // CloudAuth, // Potentially for a dedicated auth modal, not used initially
+  SaveGame, // Added new modal type
 }
 
 export interface Settings {
@@ -248,7 +247,7 @@ export interface GameState {
   characterSkills: Skill[];
   isRoleplayModeActive: boolean;
   isAuthorInterventionModeActive: boolean;
-  activeSidebarTab?: ActiveSidebarTab; 
+  activeSidebarTab?: ActiveSidebarTab; // This will now be used by GamePage for mobile panel/action sheet toggling
   npcRelationships: Record<string, NPCProfile>; 
   objectives: Objective[];
   currency?: { name: string; amount: number; icon?: string };
@@ -257,7 +256,7 @@ export interface GameState {
 
 export interface AutosavedGameInfo {
   gameState: GameState;
-  savedAt: string; 
+  savedAt: string; // ISO string for the save timestamp
 }
 
 export interface StatChange { 
@@ -377,24 +376,4 @@ export interface AIRandomGenerationParams {
   userTheme: string;
   userDescription: string;
   numEntities: number;
-}
-
-// --- Google Auth & Drive Types ---
-export interface GoogleUserProfile {
-  id: string;
-  name: string;
-  email: string;
-  picture: string;
-}
-
-export interface DriveFile {
-  id: string;
-  name: string;
-  modifiedTime: string; // ISO string
-  size?: string; // In bytes, as string from Drive API
-}
-
-export interface DriveAppContext {
-  appFolderId: string | null;
-  // Potentially other app-specific Drive context
 }

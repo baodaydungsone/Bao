@@ -8,7 +8,7 @@ export const GEMINI_TEXT_MODEL = "gemini-2.5-flash-preview-04-17";
 export const LOCAL_STORAGE_SETTINGS_KEY = "aiRoleplaySimulatorSettings";
 export const LOCAL_STORAGE_NSFW_KEY = "aiRoleplaySimulatorNSFW";
 export const LOCAL_STORAGE_API_KEY = "aiRoleplaySimulatorApiKey";
-export const LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX = "aiRoleplaySimulatorAutosave_";
+export const LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX = "aiRoleplaySimulatorAutosave_"; // Renamed and updated
 
 
 export const STORY_PROMPT_CONFIG_BASE = {
@@ -239,10 +239,3 @@ Ví dụ về cập nhật thời gian:
 \`\`\`
 `
 };
-
-// --- Google Auth & Drive Constants ---
-export const GOOGLE_CLIENT_ID = "953626092817-h3m9jmfj7kpbb9n438vn4blvcit7igpq.apps.googleusercontent.com";
-export const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file openid email profile";
-export const APP_DRIVE_FOLDER_NAME = "AI Nhap Vai Simulator Saves";
-export const APP_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
-export const SAVE_FILE_MIME_TYPE = "application/json";

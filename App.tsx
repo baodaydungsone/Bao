@@ -11,7 +11,6 @@ import GuideModal from './components/modals/GuideModal';
 import NewStorySetupModal from './components/modals/NewStorySetupModal';
 import LoadStoryModal from './components/modals/LoadStoryModal';
 import { useSettings } from './contexts/SettingsContext';
-import { useAuth } from './contexts/AuthContext'; // Corrected import
 import { usePublicToast } from './contexts/ToastContext';
 import WorldEventCreatorModal from './components/modals/WorldEventCreatorModal';
 import StorySummaryModal from './components/modals/StorySummaryModal';
@@ -23,11 +22,9 @@ import SaveGameModal from './components/modals/SaveGameModal';
 const App: React.FC = () => {
   const { settings, nsfwSettings, userApiKey } = useSettings();
   const { addToast } = usePublicToast();
-  const { isLoadingAuth, isGapiLoaded, isGisLoaded } = useAuth(); // Get auth loading state
   const [activeModal, setActiveModal] = useState<ModalType>(ModalType.None);
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [isAppLoading, setIsAppLoading] = useState<boolean>(true); // Renamed from isLoading
-
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // slotIdentifier here is the user-chosen name, normalization happens inside
   const saveGameStateToLocalStorage = useCallback((currentGameState: GameState | null, slotIdentifier: string) => {
@@ -46,6 +43,7 @@ const App: React.FC = () => {
       
       try {
         localStorage.setItem(key, JSON.stringify(autosaveData));
+        // Toast for manual saves is now handled within SaveGameModal itself after calling this
         console.log(`Game saved to slot "${normalizedSlotIdentifier}" (key: "${key}") at:`, autosaveData.savedAt);
       } catch (error) {
         console.error(`Error saving game to localStorage slot "${normalizedSlotIdentifier}":`, error);
@@ -56,7 +54,7 @@ const App: React.FC = () => {
   
   const autosaveCurrentStoryCallback = useCallback((gs: GameState) => {
     if (gs.setup?.id) { 
-      saveGameStateToLocalStorage(gs, gs.setup.id); 
+      saveGameStateToLocalStorage(gs, gs.setup.id); // Use story ID as the implicit autosave slot
     }
   }, [saveGameStateToLocalStorage]);
 
@@ -83,16 +81,11 @@ const App: React.FC = () => {
   }, [settings.theme, settings.fontSize]);
 
   useEffect(() => {
-    // App loading considers GIS/GAPI readiness along with initial timeout
-    if (!isLoadingAuth && isGapiLoaded && isGisLoaded) {
-      const timer = setTimeout(() => {
-        setIsAppLoading(false);
-      }, 300); // Small delay after auth libs are ready
-      return () => clearTimeout(timer);
-    } else {
-        setIsAppLoading(true); // Keep loading if auth libs are not ready
-    }
-  }, [isLoadingAuth, isGapiLoaded, isGisLoaded]);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500); 
+    return () => clearTimeout(timer);
+  }, []);
 
 
   const handleStartNewStory = useCallback((setupData: StorySetupData) => {
@@ -216,13 +209,11 @@ const App: React.FC = () => {
    return completeGameToLoad;
   }, [getDefaultStats, settings.currencyEnabled, settings.timeSystemEnabled]);
   
-  const handleLoadStory = useCallback((loadedGameState: GameState, source: 'file' | 'autosave_slot' | 'drive' = 'file') => {
+  const handleLoadStory = useCallback((loadedGameState: GameState, source: 'file' | 'autosave_slot' = 'file') => {
     const processedGameState = processLoadedGameState(loadedGameState);
     setGameState(processedGameState);
     setActiveModal(ModalType.None);
-    let sourceText = 'từ file';
-    if (source === 'autosave_slot') sourceText = 'từ slot lưu trữ';
-    else if (source === 'drive') sourceText = 'từ Google Drive';
+    const sourceText = source === 'file' ? 'từ file' : 'từ slot lưu trữ';
     addToast({ message: `Đã tải game "${processedGameState.setup.name || 'Game đã lưu'}" ${sourceText}!`, type: 'success', icon: 'fas fa-upload' });
   }, [addToast, processLoadedGameState]);
   
@@ -279,14 +270,14 @@ const App: React.FC = () => {
     }
   }, [addToast]);
 
-  if (isAppLoading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-xl text-primary dark:text-primary-light bg-background-light dark:bg-background-dark p-4">
         <svg className="animate-spin h-12 w-12 text-primary dark:text-primary-light mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p className="font-semibold">Đang tải ứng dụng và dịch vụ Google...</p>
+        <p className="font-semibold">Đang tải ứng dụng...</p>
         <p className="text-sm text-slate-500 dark:text-slate-400">Chuẩn bị bước vào thế giới huyền ảo!</p>
       </div>
     );
@@ -313,7 +304,6 @@ const App: React.FC = () => {
                   onClose={() => setActiveModal(ModalType.None)}
                   onLoadStoryFromFile={(loadedState) => handleLoadStory(loadedState, 'file')}
                   onLoadStoryFromSlot={handleLoadStoryFromSlot}
-                  onLoadStoryFromDrive={(loadedState) => handleLoadStory(loadedState, 'drive')} // Pass new prop
                 />;
       case ModalType.WorldEventCreator:
         return gameState ? <WorldEventCreatorModal
