@@ -1,10 +1,14 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
 import Input from '../Input';
-import { GameState, AutosavedGameInfo } from '../../types';
+import { GameState, AutosavedGameInfo, DriveFile } from '../../types';
 import { LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX } from '../../constants';
 import { usePublicToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext'; // Corrected import
+import * as GoogleDriveService from '../../services/GoogleDriveService';
+
 
 interface SaveGameModalProps {
   isOpen: boolean;
@@ -55,30 +59,79 @@ const SaveGameModal: React.FC<SaveGameModalProps> = ({
   onSaveToLocalStorageSlot
 }) => {
   const { addToast } = usePublicToast();
+  const { isGoogleLoggedIn, accessToken, requestDriveScopes, isGapiLoaded, driveContext, setDriveContext } = useAuth();
   const [slotName, setSlotName] = useState<string>('');
+  const [driveFileName, setDriveFileName] = useState<string>('');
   const [existingSlots, setExistingSlots] = useState<ExistingSlotInfo[]>([]);
+  const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+  const [isLoadingDrive, setIsLoadingDrive] = useState(false);
+  // const [appDriveFolderId, setAppDriveFolderId] = useState<string | null>(null); // Use driveContext
+  const [selectedDriveFileToOverwrite, setSelectedDriveFileToOverwrite] = useState<DriveFile | null>(null);
 
-  const refreshSlots = useCallback(() => {
+
+  const refreshLocalSlots = useCallback(() => {
     setExistingSlots(getAvailableSaveSlots());
   }, []);
 
+  const fetchDriveFiles = useCallback(async (token?: string | null, gapiReady?: boolean) => {
+    const currentToken = token === undefined ? accessToken : token;
+    const currentGapiReady = gapiReady === undefined ? isGapiLoaded : gapiReady;
+
+    if (!isGoogleLoggedIn || !currentToken || !currentGapiReady) {
+      if(isGoogleLoggedIn && currentGapiReady && !currentToken) {
+         addToast({message: "Cần cấp quyền truy cập Google Drive để thao tác với Drive.", type: 'warning'});
+      }
+      return;
+    }
+    setIsLoadingDrive(true);
+    try {
+      let folderId = driveContext.appFolderId;
+      if (!folderId) {
+        folderId = await GoogleDriveService.findOrCreateAppFolder(currentToken);
+        setDriveContext(prev => ({ ...prev, appFolderId: folderId }));
+      }
+      const files = await GoogleDriveService.listSaveFiles(currentToken, folderId);
+      setDriveFiles(files);
+    } catch (error: any) {
+      addToast({ message: `Lỗi khi tải danh sách từ Drive: ${error.message}`, type: 'error' });
+       if (error.message.toLowerCase().includes("token") || error.message.toLowerCase().includes("auth")) {
+        await requestDriveScopes(); 
+      }
+    } finally {
+      setIsLoadingDrive(false);
+    }
+  }, [isGoogleLoggedIn, accessToken, isGapiLoaded, addToast, driveContext.appFolderId, setDriveContext, requestDriveScopes]);
+
+
   useEffect(() => {
     if (isOpen) {
-      refreshSlots();
+      refreshLocalSlots();
+      const defaultNameBase = gameState?.setup.name || `Game_${new Date().toISOString().slice(0,10)}`;
+      
       if (gameState && gameState.setup.name) {
         setSlotName(gameState.setup.name);
+        setDriveFileName(gameState.setup.name + ".json");
       } else if (gameState && gameState.setup.id) {
         const storyIdSlotName = gameState.setup.id.startsWith(LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX) 
           ? gameState.setup.id.substring(LOCAL_STORAGE_AUTOSAVE_KEY_PREFIX.length) 
           : gameState.setup.id;
-        setSlotName(storyIdSlotName.replace(/_/g, ' ')); // Make it more readable
+        setSlotName(storyIdSlotName.replace(/_/g, ' '));
+        setDriveFileName(storyIdSlotName.replace(/_/g, ' ') + ".json");
       } else {
-        setSlotName(`Game_${new Date().toISOString().slice(0,10)}`);
+        setSlotName(defaultNameBase);
+        setDriveFileName(defaultNameBase + ".json");
+      }
+      setSelectedDriveFileToOverwrite(null); // Reset overwrite selection
+
+      if (isGoogleLoggedIn && isGapiLoaded) {
+        fetchDriveFiles();
+      } else {
+        setDriveFiles([]);
       }
     }
-  }, [isOpen, gameState, refreshSlots]);
+  }, [isOpen, gameState, refreshLocalSlots, isGoogleLoggedIn, fetchDriveFiles, isGapiLoaded]);
 
-  const handleSaveToSlot = () => {
+  const handleSaveToLocalSlot = () => {
     if (!gameState) {
       addToast({ message: "Không có dữ liệu game để lưu.", type: 'error' });
       return;
@@ -100,102 +153,157 @@ const SaveGameModal: React.FC<SaveGameModalProps> = ({
     } else {
       addToast({ message: `Game đã được lưu vào slot mới: "${trimmedSlotName}"`, type: 'success', icon: 'fas fa-save' });
     }
-    refreshSlots();
+    refreshLocalSlots();
   };
 
-  const handleDeleteSlot = (slotKey: string, displayName: string) => {
+  const handleDeleteLocalSlot = (slotKey: string, displayName: string) => {
     localStorage.removeItem(slotKey);
-    refreshSlots();
+    refreshLocalSlots();
     addToast({message: `Đã xóa slot lưu trữ: "${displayName}"`, type: 'info', icon: 'fas fa-trash-alt'});
   };
   
-  const handleSelectSlotForOverwrite = (slotInfo: ExistingSlotInfo) => {
-    // Use the display name for the input field, as it's more user-friendly.
-    // The actual saving logic will normalize it.
+  const handleSelectLocalSlotForOverwrite = (slotInfo: ExistingSlotInfo) => {
     setSlotName(slotInfo.displayName);
     addToast({message: `Tên slot "${slotInfo.displayName}" đã được điền. Nhấn "Lưu Vào Slot Này" để ghi đè.`, type: 'info', icon: 'fas fa-edit'});
   };
 
+  const handleSaveToDrive = async () => {
+    if (!gameState) {
+        addToast({ message: "Không có dữ liệu game để lưu.", type: 'error' });
+        return;
+    }
+    if (!isGoogleLoggedIn || !accessToken || !isGapiLoaded) {
+        addToast({ message: "Vui lòng đăng nhập Google và cấp quyền Drive.", type: 'error' });
+        return;
+    }
+    const trimmedDriveFileName = driveFileName.trim();
+    if (!trimmedDriveFileName) {
+        addToast({ message: "Vui lòng nhập tên file cho Google Drive.", type: 'warning' });
+        return;
+    }
+
+    setIsLoadingDrive(true);
+    try {
+        let folderId = driveContext.appFolderId;
+        if (!folderId) {
+            folderId = await GoogleDriveService.findOrCreateAppFolder(accessToken);
+            setDriveContext(prev => ({ ...prev, appFolderId: folderId }));
+        }
+        
+        const fileToSaveName = trimmedDriveFileName.endsWith('.json') ? trimmedDriveFileName : `${trimmedDriveFileName}.json`;
+        
+        // Check if overwriting selected file or a file with the same name
+        let fileIdToOverwrite = selectedDriveFileToOverwrite?.id;
+        if (!fileIdToOverwrite) {
+            const existingFileWithName = driveFiles.find(f => f.name === fileToSaveName);
+            if (existingFileWithName) {
+                if (!window.confirm(`File "${fileToSaveName}" đã tồn tại trên Google Drive. Bạn có muốn ghi đè không?`)) {
+                    setIsLoadingDrive(false);
+                    return;
+                }
+                fileIdToOverwrite = existingFileWithName.id;
+            }
+        }
+
+
+        await GoogleDriveService.saveGameToDrive(accessToken, folderId, gameState, fileToSaveName, fileIdToOverwrite);
+        addToast({ message: `Đã lưu game "${fileToSaveName}" lên Google Drive.`, type: 'success', icon: 'fab fa-google-drive' });
+        fetchDriveFiles(); // Refresh file list
+        setSelectedDriveFileToOverwrite(null); // Reset selection
+        setDriveFileName(gameState.setup.name ? gameState.setup.name + ".json" : `GameLuu_${Date.now()}.json`); // Reset to default for next save
+    } catch (error: any) {
+        addToast({ message: `Lỗi khi lưu game lên Drive: ${error.message}`, type: 'error' });
+    } finally {
+        setIsLoadingDrive(false);
+    }
+  };
+  
+  const handleSelectDriveFileForOverwrite = (file: DriveFile) => {
+    setDriveFileName(file.name);
+    setSelectedDriveFileToOverwrite(file);
+    addToast({message: `File "${file.name}" đã được chọn để ghi đè. Nhấn "Lưu Vào Google Drive" để xác nhận.`, type:'info', icon: 'fas fa-edit'});
+  };
+
+
   if (!gameState) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Lưu Tiến Trình Game" size="lg">
-      <div className="space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} title="Lưu Tiến Trình Game" size="xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+        {/* Local Save Section */}
         <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
-          <h3 className="text-md font-semibold text-text-light dark:text-text-dark mb-2">
+          <h3 className="text-md font-semibold text-text-light dark:text-text-dark mb-3">
             <i className="fas fa-file-download mr-2 text-primary dark:text-primary-light"></i>Lưu Dưới Dạng File (.json)
           </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-            Tải về một bản sao của tiến trình game hiện tại. File này có thể được sử dụng để tải lại game sau này.
-          </p>
-          <Button 
-            onClick={() => onSaveToJsonFile(gameState)}
-            variant="primary"
-            className="w-full sm:w-auto"
-            leftIcon={<i className="fas fa-download"></i>}
-          >
+          <Button onClick={() => onSaveToJsonFile(gameState)} variant="primary" className="w-full" leftIcon={<i className="fas fa-download"></i>}>
             Tải File JSON Xuống
           </Button>
-        </div>
-
-        <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/60 border-blue-200 dark:border-blue-700">
+          <hr className="my-4 border-border-light dark:border-border-dark"/>
           <h3 className="text-md font-semibold text-text-light dark:text-text-dark mb-2">
-            <i className="fas fa-database mr-2 text-blue-500 dark:text-blue-400"></i>Lưu Vào Slot Trong Trình Duyệt
+            <i className="fas fa-hdd mr-2 text-primary dark:text-primary-light"></i>Lưu Vào Slot Trình Duyệt
           </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-            Lưu game vào một slot trong bộ nhớ của trình duyệt. Bạn có thể đặt tên cho slot này.
-            Lưu ý: Dữ liệu này có thể bị mất nếu bạn xóa cache trình duyệt.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2 items-end mb-4">
-            <Input
-              label="Tên Slot Lưu Trữ:"
-              value={slotName}
-              onChange={(e) => setSlotName(e.target.value)}
-              placeholder="Ví dụ: Cuộc phiêu lưu của Lý Tiểu Long"
-              wrapperClass="flex-grow !mb-0"
-            />
-            <Button 
-              onClick={handleSaveToSlot}
-              variant="secondary"
-              className="w-full sm:w-auto mt-2 sm:mt-0"
-              disabled={!slotName.trim()}
-              leftIcon={<i className="fas fa-save"></i>}
-            >
+          <div className="flex flex-col sm:flex-row gap-2 items-end mb-3">
+            <Input label="Tên Slot Lưu Trữ:" value={slotName} onChange={(e) => setSlotName(e.target.value)} placeholder="Tên cuộc phiêu lưu" wrapperClass="flex-grow !mb-0"/>
+            <Button onClick={handleSaveToLocalSlot} variant="secondary" className="w-full sm:w-auto mt-2 sm:mt-0" disabled={!slotName.trim()} leftIcon={<i className="fas fa-save"></i>}>
               Lưu Vào Slot Này
             </Button>
           </div>
-
           {existingSlots.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Các slot đã lưu (nhấn để điền tên và ghi đè):</h4>
-              <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-2">
+              <h4 className="text-xs font-medium text-slate-700 dark:text-slate-200 mb-1">Slot đã lưu (nhấn để điền tên và ghi đè):</h4>
+              <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar pr-1">
                 {existingSlots.map(slot => (
-                  <div 
-                    key={slot.key} 
-                    className="p-2.5 border rounded-md bg-white dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs hover:bg-slate-100 dark:hover:bg-slate-600/50 transition-colors"
-                  >
-                    <div className="cursor-pointer flex-grow mr-2" onClick={() => handleSelectSlotForOverwrite(slot)} title={`Chọn để ghi đè slot: ${slot.displayName}`}>
+                  <div key={slot.key} className="p-1.5 border rounded-md bg-white dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs hover:bg-slate-100 dark:hover:bg-slate-600/50 transition-colors">
+                    <div className="cursor-pointer flex-grow mr-1" onClick={() => handleSelectLocalSlotForOverwrite(slot)} title={`Chọn để ghi đè slot: ${slot.displayName}`}>
                       <strong className="block text-slate-800 dark:text-slate-100">{slot.displayName}</strong>
-                      <span className="text-slate-500 dark:text-slate-400">Lưu lúc: {new Date(slot.savedAt).toLocaleString('vi-VN')}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Lúc: {new Date(slot.savedAt).toLocaleTimeString('vi-VN')}</span>
                     </div>
-                    <Button 
-                      size="xs" 
-                      variant="danger" 
-                      onClick={() => handleDeleteSlot(slot.key, slot.displayName)}
-                      className="!p-1.5 ml-2 flex-shrink-0"
-                      title={`Xóa slot: ${slot.displayName}`}
-                    >
-                      <i className="fas fa-trash-alt"></i>
-                    </Button>
+                    <Button size="xs" variant="danger" onClick={() => handleDeleteLocalSlot(slot.key, slot.displayName)} className="!p-1 flex-shrink-0" title={`Xóa slot: ${slot.displayName}`}><i className="fas fa-trash-alt"></i></Button>
                   </div>
                 ))}
               </div>
             </div>
           )}
         </div>
+
+        {/* Google Drive Save Section */}
+        <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/60 border-blue-200 dark:border-blue-700">
+          <h3 className="text-md font-semibold text-text-light dark:text-text-dark mb-2">
+            <i className="fab fa-google-drive mr-2 text-blue-500 dark:text-blue-400"></i>Lưu Vào Google Drive
+          </h3>
+          {!isGoogleLoggedIn ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400 italic">Vui lòng đăng nhập Google để lưu game lên Drive.</p>
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row gap-2 items-end mb-3">
+                <Input label="Tên File trên Drive:" value={driveFileName} onChange={(e) => {setDriveFileName(e.target.value); setSelectedDriveFileToOverwrite(null);}} placeholder="Ví dụ: PhieuLuuCuaToi.json" wrapperClass="flex-grow !mb-0"/>
+                <Button onClick={handleSaveToDrive} variant="success" className="w-full sm:w-auto mt-2 sm:mt-0 bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600" disabled={!driveFileName.trim() || isLoadingDrive} isLoading={isLoadingDrive} leftIcon={<i className="fas fa-cloud-upload-alt"></i>}>
+                  Lưu Lên Drive
+                </Button>
+              </div>
+              {isLoadingDrive && !driveFiles.length && <div className="text-xs text-blue-500 dark:text-blue-400"><i className="fas fa-spinner fa-spin mr-1"></i>Đang tải danh sách file...</div>}
+              {driveFiles.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-slate-700 dark:text-slate-200 mb-1">File trên Drive (nhấn để điền tên và ghi đè):</h4>
+                  <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar pr-1">
+                    {driveFiles.map(file => (
+                      <div key={file.id} className={`p-1.5 border rounded-md flex justify-between items-center text-xs transition-colors ${selectedDriveFileToOverwrite?.id === file.id ? 'bg-blue-100 dark:bg-blue-700 ring-1 ring-blue-500' : 'bg-white dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600/50'}`}>
+                        <div className="cursor-pointer flex-grow mr-1" onClick={() => handleSelectDriveFileForOverwrite(file)} title={`Chọn để ghi đè file: ${file.name}`}>
+                          <strong className="block text-slate-800 dark:text-slate-100">{file.name}</strong>
+                          <span className="text-slate-500 dark:text-slate-400">Sửa đổi: {new Date(file.modifiedTime).toLocaleTimeString('vi-VN')}</span>
+                        </div>
+                        {/* Delete from Drive might be added to Load modal for safety */}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
       <div className="mt-8 flex justify-end">
-        <Button variant="outline" onClick={onClose} size="lg">Đóng</Button>
+        <Button variant="outline" onClick={onClose} size="lg" disabled={isLoadingDrive}>Đóng</Button>
       </div>
     </Modal>
   );
